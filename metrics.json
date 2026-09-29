@@ -1,0 +1,77 @@
+{
+  "model_architecture": "xgboost.XGBRegressor",
+  "hyperparameters": {
+    "n_estimators": 500,
+    "max_depth": 6,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42
+  },
+  "dataset_split": {
+    "total_records": 7272,
+    "train_records": 5817,
+    "test_records": 1455,
+    "train_percentage": 80.0,
+    "test_percentage": 20.0,
+    "feature_count": 18
+  },
+  "train_metrics": {
+    "rmse": 1.8156,
+    "mae": 1.443,
+    "r2_score": 0.97
+  },
+  "test_metrics": {
+    "rmse": 3.2636,
+    "mae": 2.559,
+    "r2_score": 0.9201
+  },
+  "linear_regression_baseline": {
+    "test_rmse": 3.6676,
+    "test_mae": 2.8624,
+    "test_r2_score": 0.8991,
+    "xgb_rmse_improvement_pct": 11.02
+  },
+  "top_10_feature_importances": [
+    {
+      "feature": "origin_Baltimore (USA)",
+      "importance": 0.547037
+    },
+    {
+      "feature": "distance_nm",
+      "importance": 0.16654
+    },
+    {
+      "feature": "origin_Kalimantan (Indonesia)",
+      "importance": 0.119915
+    },
+    {
+      "feature": "is_monsoon",
+      "importance": 0.041541
+    },
+    {
+      "feature": "origin_Hay Point (Australia)",
+      "importance": 0.033878
+    },
+    {
+      "feature": "bdi_index",
+      "importance": 0.032485
+    },
+    {
+      "feature": "coal_price_usd",
+      "importance": 0.022532
+    },
+    {
+      "feature": "origin_Richards Bay (South Africa)",
+      "importance": 0.016605
+    },
+    {
+      "feature": "vlsfo_price",
+      "importance": 0.004719
+    },
+    {
+      "feature": "vlsfo_price_lag7",
+      "importance": 0.004159
+    }
+  ]
+}
