@@ -374,12 +374,6 @@ def render_sidebar() -> Dict[str, Any]:
     st.sidebar.caption("Ministry of Steel • Government of India")
     st.sidebar.markdown("---")
 
-    # Handle preset session states if triggered
-    default_vol = st.session_state.get("preset_volume", 150000)
-    default_orig = st.session_state.get("preset_origin", "Hay Point (Australia)")
-    default_dest = st.session_state.get("preset_dest", "Paradip")
-    default_contract = st.session_state.get("preset_contract", "Spot")
-
     origin_options = [
         "Hay Point (Australia)",
         "Newcastle (Australia)",
@@ -395,14 +389,26 @@ def render_sidebar() -> Dict[str, Any]:
 
     dest_options = ["Paradip", "Visakhapatnam (Vizag)", "Gangavaram", "Dhamra", "Haldia", "Gopalpur"]
 
-    orig_idx = origin_options.index(default_orig) if default_orig in origin_options else 0
-    dest_idx = dest_options.index(default_dest) if default_dest in dest_options else 0
+    # Initialize default session state if not already set
+    if "cargo_vol_input" not in st.session_state:
+        st.session_state["cargo_vol_input"] = 150000
+    if "origin_select" not in st.session_state:
+        st.session_state["origin_select"] = "Hay Point (Australia)"
+    if "dest_select" not in st.session_state:
+        st.session_state["dest_select"] = "Paradip"
+    if "contract_radio" not in st.session_state:
+        st.session_state["contract_radio"] = "Spot"
+
+    # Ensure selected options are valid
+    if st.session_state["origin_select"] not in origin_options:
+        st.session_state["origin_select"] = origin_options[0]
+    if st.session_state["dest_select"] not in dest_options:
+        st.session_state["dest_select"] = dest_options[0]
 
     cargo_volume_mt = st.sidebar.number_input(
         "Cargo Parcel Volume (MT)",
         min_value=5000,
         max_value=2000000,
-        value=default_vol,
         step=5000,
         key="cargo_vol_input",
         help="Total tonnage of metallurgical coking coal cargo to be chartered."
@@ -411,7 +417,6 @@ def render_sidebar() -> Dict[str, Any]:
     origin_port = st.sidebar.selectbox(
         "Origin Loading Port (Overseas)",
         options=origin_options,
-        index=orig_idx,
         key="origin_select",
         help="Overseas bulk export terminal where metallurgical coal parcel is loaded."
     )
@@ -419,7 +424,6 @@ def render_sidebar() -> Dict[str, Any]:
     destination_port = st.sidebar.selectbox(
         "Destination Discharge Port (East Coast India)",
         options=dest_options,
-        index=dest_idx,
         key="dest_select",
         help="Designated Indian East Coast port for vessel berthing and blast furnace logistics."
     )
@@ -427,7 +431,6 @@ def render_sidebar() -> Dict[str, Any]:
     contract_type = st.sidebar.radio(
         "Contract Mode",
         options=["Spot", "Time Charter / COA"],
-        index=0 if default_contract == "Spot" else 1,
         horizontal=True,
         key="contract_radio",
         help="Select between immediate single-voyage Spot fixture or periodic Time Charter / COA."
@@ -652,36 +655,37 @@ def render_preset_toolbar() -> None:
     p_col1, p_col2, p_col3, p_col4 = st.columns(4)
     
     with p_col1:
-        if st.button("🇦🇺 Australia ➔ Paradip (150k MT)", use_container_width=True):
-            st.session_state.preset_volume = 150000
-            st.session_state.preset_origin = "Hay Point (Australia)"
-            st.session_state.preset_dest = "Paradip"
-            st.session_state.preset_contract = "Spot"
+        if st.button("🇦🇺 Australia ➔ Paradip (150k MT)", use_container_width=True, key="preset_btn_au"):
+            st.session_state["cargo_vol_input"] = 150000
+            st.session_state["origin_select"] = "Hay Point (Australia)"
+            st.session_state["dest_select"] = "Paradip"
+            st.session_state["contract_radio"] = "Spot"
             st.rerun()
 
     with p_col2:
-        if st.button("🇷🇺 Russia ➔ Gangavaram (170k MT)", use_container_width=True):
-            st.session_state.preset_volume = 170000
-            st.session_state.preset_origin = "Taman (Russia)"
-            st.session_state.preset_dest = "Gangavaram"
-            st.session_state.preset_contract = "Time Charter / COA"
+        if st.button("🇷🇺 Russia ➔ Gangavaram (170k MT)", use_container_width=True, key="preset_btn_ru"):
+            st.session_state["cargo_vol_input"] = 170000
+            st.session_state["origin_select"] = "Taman (Russia)"
+            st.session_state["dest_select"] = "Gangavaram"
+            st.session_state["contract_radio"] = "Time Charter / COA"
             st.rerun()
 
     with p_col3:
-        if st.button("🇺🇸 USA ➔ Haldia River (75k MT)", use_container_width=True):
-            st.session_state.preset_volume = 75000
-            st.session_state.preset_origin = "Hampton Roads (USA)"
-            st.session_state.preset_dest = "Haldia"
-            st.session_state.preset_contract = "Spot"
+        if st.button("🇺🇸 USA ➔ Haldia River (75k MT)", use_container_width=True, key="preset_btn_us"):
+            st.session_state["cargo_vol_input"] = 75000
+            st.session_state["origin_select"] = "Hampton Roads (USA)"
+            st.session_state["dest_select"] = "Haldia"
+            st.session_state["contract_radio"] = "Spot"
             st.rerun()
 
     with p_col4:
-        if st.button("🇮🇩 Indonesia ➔ Vizag (55k MT)", use_container_width=True):
-            st.session_state.preset_volume = 55000
-            st.session_state.preset_origin = "Kalimantan (Indonesia)"
-            st.session_state.preset_dest = "Visakhapatnam (Vizag)"
-            st.session_state.preset_contract = "Spot"
+        if st.button("🇮🇩 Indonesia ➔ Vizag (55k MT)", use_container_width=True, key="preset_btn_id"):
+            st.session_state["cargo_vol_input"] = 55000
+            st.session_state["origin_select"] = "Kalimantan (Indonesia)"
+            st.session_state["dest_select"] = "Visakhapatnam (Vizag)"
+            st.session_state["contract_radio"] = "Spot"
             st.rerun()
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
