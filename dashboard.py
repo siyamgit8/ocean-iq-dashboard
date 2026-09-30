@@ -440,9 +440,7 @@ def render_sidebar() -> Dict[str, Any]:
         help="Conservative prioritizes berth clearance & zero slack; Aggressive prioritizes lowest spot rate."
     )
 
-    st.sidebar.markdown("---")
-    
-    # Optional Google Gemini API Key (Secrets / Environment Variable / Manual Entry)
+    # Silently resolve Google Gemini API Key from Streamlit Secrets or Environment Variable
     secret_key = ""
     try:
         if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
@@ -450,20 +448,7 @@ def render_sidebar() -> Dict[str, Any]:
     except Exception:
         pass
 
-    api_key_default = secret_key or os.environ.get("GEMINI_API_KEY", "")
-    api_key_input = st.sidebar.text_input(
-        "Google Gemini API Key (Optional)",
-        value=api_key_default,
-        type="password",
-        placeholder="Enter your Gemini API key...",
-        key="copilot_api_key",
-        help="Enter your Google Gemini API key for live multimodal cloud generation, or leave blank to use the built-in grounded intelligence engine."
-    )
-
-    if api_key_input.strip():
-        st.sidebar.markdown("<div style='font-size: 0.78rem; color: #10B981; margin-top: -6px; margin-bottom: 12px;'>🟢 <b>Live Gemini AI Key Connected</b></div>", unsafe_allow_html=True)
-    else:
-        st.sidebar.markdown("<div style='font-size: 0.78rem; color: #38BDF8; margin-top: -6px; margin-bottom: 12px;'>🛡️ <b>SIH Local Domain Engine (Offline-Immune)</b></div>", unsafe_allow_html=True)
+    api_key_backend = secret_key or os.environ.get("GEMINI_API_KEY", "")
 
     get_rec_btn = st.sidebar.button(
         "🔍 Run DSS Optimization Pipeline",
@@ -489,7 +474,7 @@ def render_sidebar() -> Dict[str, Any]:
         "destination_port": destination_port,
         "contract_type": "Spot" if "Spot" in contract_type else "Time Charter",
         "risk_tolerance": risk_tolerance,
-        "gemini_api_key": api_key_input,
+        "gemini_api_key": api_key_backend,
         "submitted": get_rec_btn
     }
 
@@ -1105,9 +1090,10 @@ def main():
             # Engine Mode Status Banner
             api_key_active = bool(inputs.get("gemini_api_key", "").strip())
             if api_key_active:
-                st.info("🟢 **Live Multimodal LLM Engine Active (Google Gemini)** • Strict SIH Maritime Domain Guardrails Enforced")
+                st.markdown("<div style='background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.85rem; color: #10B981;'>🟢 <b>Live Multimodal LLM Engine Connected</b> &bull; Domain-Grounded SIH Project Intelligence</div>", unsafe_allow_html=True)
             else:
-                st.info("🛡️ **Evergreen Grounded Domain Engine Active (100% Offline-Immune)** • Guaranteed zero-dependency operation for SIH portal evaluations")
+                st.markdown("<div style='background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.85rem; color: #38BDF8;'>🛡️ <b>Evergreen Grounded Domain Engine Active</b> &bull; 100% Offline-Immune &bull; Zero-Dependency Evaluation Ready</div>", unsafe_allow_html=True)
+
 
             # Initialize chat history
             if "copilot_messages" not in st.session_state or not st.session_state.copilot_messages:
