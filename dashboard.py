@@ -646,8 +646,14 @@ def render_waterline_feasibility_cards(dual_res: Dict[str, Any]) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# COMPONENT 3: ONE-CLICK QUICK DEMO PRESETS (TOOLBAR FOR JUDGES)
-# ═══════════════════════════════════════════════════════════════════════════════
+def apply_preset_scenario(volume: int, origin: str, dest: str, contract: str) -> None:
+    """Callback triggered before script rerun to update widget session keys safely."""
+    st.session_state["cargo_vol_input"] = volume
+    st.session_state["origin_select"] = origin
+    st.session_state["dest_select"] = dest
+    st.session_state["contract_radio"] = contract
+
+
 def render_preset_toolbar() -> None:
     """Render quick scenario presets toolbar allowing 1-click demonstration of key use cases."""
     st.markdown("**⚡ One-Click Executive Demo Scenarios (Click to test live):**")
@@ -655,36 +661,40 @@ def render_preset_toolbar() -> None:
     p_col1, p_col2, p_col3, p_col4 = st.columns(4)
     
     with p_col1:
-        if st.button("🇦🇺 Australia ➔ Paradip (150k MT)", use_container_width=True, key="preset_btn_au"):
-            st.session_state["cargo_vol_input"] = 150000
-            st.session_state["origin_select"] = "Hay Point (Australia)"
-            st.session_state["dest_select"] = "Paradip"
-            st.session_state["contract_radio"] = "Spot"
-            st.rerun()
+        st.button(
+            "🇦🇺 Australia ➔ Paradip (150k MT)",
+            use_container_width=True,
+            key="preset_btn_au",
+            on_click=apply_preset_scenario,
+            args=(150000, "Hay Point (Australia)", "Paradip", "Spot")
+        )
 
     with p_col2:
-        if st.button("🇷🇺 Russia ➔ Gangavaram (170k MT)", use_container_width=True, key="preset_btn_ru"):
-            st.session_state["cargo_vol_input"] = 170000
-            st.session_state["origin_select"] = "Taman (Russia)"
-            st.session_state["dest_select"] = "Gangavaram"
-            st.session_state["contract_radio"] = "Time Charter / COA"
-            st.rerun()
+        st.button(
+            "🇷🇺 Russia ➔ Gangavaram (170k MT)",
+            use_container_width=True,
+            key="preset_btn_ru",
+            on_click=apply_preset_scenario,
+            args=(170000, "Taman (Russia)", "Gangavaram", "Time Charter / COA")
+        )
 
     with p_col3:
-        if st.button("🇺🇸 USA ➔ Haldia River (75k MT)", use_container_width=True, key="preset_btn_us"):
-            st.session_state["cargo_vol_input"] = 75000
-            st.session_state["origin_select"] = "Hampton Roads (USA)"
-            st.session_state["dest_select"] = "Haldia"
-            st.session_state["contract_radio"] = "Spot"
-            st.rerun()
+        st.button(
+            "🇺🇸 USA ➔ Haldia River (75k MT)",
+            use_container_width=True,
+            key="preset_btn_us",
+            on_click=apply_preset_scenario,
+            args=(75000, "Hampton Roads (USA)", "Haldia", "Spot")
+        )
 
     with p_col4:
-        if st.button("🇮🇩 Indonesia ➔ Vizag (55k MT)", use_container_width=True, key="preset_btn_id"):
-            st.session_state["cargo_vol_input"] = 55000
-            st.session_state["origin_select"] = "Kalimantan (Indonesia)"
-            st.session_state["dest_select"] = "Visakhapatnam (Vizag)"
-            st.session_state["contract_radio"] = "Spot"
-            st.rerun()
+        st.button(
+            "🇮🇩 Indonesia ➔ Vizag (55k MT)",
+            use_container_width=True,
+            key="preset_btn_id",
+            on_click=apply_preset_scenario,
+            args=(55000, "Kalimantan (Indonesia)", "Visakhapatnam (Vizag)", "Spot")
+        )
 
 
 
