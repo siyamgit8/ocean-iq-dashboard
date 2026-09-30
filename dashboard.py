@@ -50,6 +50,13 @@ from utils.feasibility import (
     PORT_CONGESTION_DATA
 )
 from utils.optimizer import run_charter_optimization
+from utils.copilot_engine import (
+    generate_grounded_local_response,
+    build_grounding_system_context,
+    query_copilot,
+    is_query_in_domain,
+    get_off_topic_response,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -435,16 +442,28 @@ def render_sidebar() -> Dict[str, Any]:
 
     st.sidebar.markdown("---")
     
-    # Optional Google Gemini API Key (Manual Entry or Environment Variable)
-    api_key_env = os.environ.get("GEMINI_API_KEY", "")
+    # Optional Google Gemini API Key (Secrets / Environment Variable / Manual Entry)
+    secret_key = ""
+    try:
+        if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+            secret_key = str(st.secrets["GEMINI_API_KEY"]).strip()
+    except Exception:
+        pass
+
+    api_key_default = secret_key or os.environ.get("GEMINI_API_KEY", "")
     api_key_input = st.sidebar.text_input(
-        "Google Gemini API Key",
-        value=api_key_env,
+        "Google Gemini API Key (Optional)",
+        value=api_key_default,
         type="password",
-        placeholder="Enter your Gemini API key (optional)",
+        placeholder="Enter your Gemini API key...",
         key="copilot_api_key",
-        help="Enter your Google Gemini API key for live multimodal AI generation, or leave blank to use the built-in grounded intelligence engine."
+        help="Enter your Google Gemini API key for live multimodal cloud generation, or leave blank to use the built-in grounded intelligence engine."
     )
+
+    if api_key_input.strip():
+        st.sidebar.markdown("<div style='font-size: 0.78rem; color: #10B981; margin-top: -6px; margin-bottom: 12px;'>🟢 <b>Live Gemini AI Key Connected</b></div>", unsafe_allow_html=True)
+    else:
+        st.sidebar.markdown("<div style='font-size: 0.78rem; color: #38BDF8; margin-top: -6px; margin-bottom: 12px;'>🛡️ <b>SIH Local Domain Engine (Offline-Immune)</b></div>", unsafe_allow_html=True)
 
     get_rec_btn = st.sidebar.button(
         "🔍 Run DSS Optimization Pipeline",
@@ -473,6 +492,7 @@ def render_sidebar() -> Dict[str, Any]:
         "gemini_api_key": api_key_input,
         "submitted": get_rec_btn
     }
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1059,55 +1079,82 @@ def main():
                     st.success("☀️ **Fair Weather Shipping Window**: Optimal loading and discharge productivity expected.")
 
         # ═══════════════════════════════════════════════════════════════════════
-        # SECTION H: DOCKED GENAI LOGISTICS COPILOT
+        # SECTION H: DOCKED GENAI LOGISTICS COPILOT (DUAL-ENGINE SIH ADVISOR)
         # ═══════════════════════════════════════════════════════════════════════
         st.markdown("<br><hr>", unsafe_allow_html=True)
-        st.markdown("### 🤖 SAIL Logistics AI Copilot — Strategic Natural Language Advisor")
         
-        with st.expander("💬 Open Conversational Command Terminal", expanded=True):
+        copilot_head_col1, copilot_head_col2 = st.columns([3, 1])
+        with copilot_head_col1:
+            st.markdown("### 🤖 SAIL Logistics AI Copilot — Strategic Natural Language Advisor")
             st.markdown(
                 """
-                <div style="font-size: 0.88rem; color: #94A3B8; margin-bottom: 14px;">
-                    Ask open-ended operational, physical feasibility, Russian coal sourcing, demurrage mitigation, or contract timing questions grounded in live XGBoost predictions and PuLP MILP optimization results.
+                <div style="font-size: 0.88rem; color: #94A3B8; margin-bottom: 10px;">
+                    Conversational Decision Support grounded in live XGBoost ML predictions, dual-port draft feasibility, and PuLP MILP fleet optimization.
                 </div>
                 """,
                 unsafe_allow_html=True
             )
+        with copilot_head_col2:
+            st.markdown("<div style='text-align: right; padding-top: 10px;'>", unsafe_allow_html=True)
+            if st.button("🧹 Clear Conversation", key="clear_copilot_chat"):
+                st.session_state.copilot_messages = []
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with st.expander("💬 Open Conversational Command Terminal", expanded=True):
+            # Engine Mode Status Banner
+            api_key_active = bool(inputs.get("gemini_api_key", "").strip())
+            if api_key_active:
+                st.info("🟢 **Live Multimodal LLM Engine Active (Google Gemini)** • Strict SIH Maritime Domain Guardrails Enforced")
+            else:
+                st.info("🛡️ **Evergreen Grounded Domain Engine Active (100% Offline-Immune)** • Guaranteed zero-dependency operation for SIH portal evaluations")
 
             # Initialize chat history
-            if "copilot_messages" not in st.session_state:
+            if "copilot_messages" not in st.session_state or not st.session_state.copilot_messages:
                 st.session_state.copilot_messages = [
                     {
                         "role": "assistant",
+                        "badge": "🛡️ SIH System Assistant",
                         "content": (
-                            "👋 **Hello! I am your SAIL Maritime Logistics AI Advisor for the Ministry of Steel.**\n\n"
-                            "I am fully grounded in real time with your active freight rate forecasts, dual-port navigational checks, and PuLP MILP fleet optimizations.\n\n"
-                            "**Quick Demo Questions (Click or ask below):**\n"
+                            "👋 **Greetings! I am your SAIL Maritime Logistics AI Advisor for the Ministry of Steel.**\n\n"
+                            "I am strictly grounded in your active dashboard parameters, mathematical fleet optimizations, and ocean freight logistics.\n\n"
+                            "**🎯 Quick Demo Questions (Click below or type your own question):**\n"
                             "1. *Why did the system allocate 2x Panamax instead of a single Capesize for this cargo?*\n"
                             "2. *How does sourcing from Russian ports (Taman / Vostochny) compare to Australian origins?*\n"
                             "3. *What is our expected demurrage liability at this discharge port and how can we mitigate it?*\n"
-                            "4. *Why should SAIL lock in a medium-term COA contract right now instead of daily spot charters?*"
+                            "4. *What are the riverine navigation constraints at Haldia port?*\n"
+                            "5. *How does the PuLP Mixed-Integer Linear Programming (MILP) model formulate the fleet cost?*\n"
+                            "6. *What machine learning architecture is used for freight rate forecasting?*"
                         )
                     }
                 ]
 
-            # Quick Prompt Action Chips
-            st.markdown("**⚡ Quick Prompt Chips:**")
-            chip_col1, chip_col2, chip_col3, chip_col4 = st.columns(4)
+            # Quick Prompt Action Chips - Row 1
+            st.markdown("**⚡ Quick Prompt Chips (Click to Ask):**")
+            chip_col1, chip_col2, chip_col3 = st.columns(3)
             
             selected_chip = None
             with chip_col1:
-                if st.button("🚢 1. 2x Panamax vs Capesize?", use_container_width=True):
+                if st.button("🚢 1. 2x Panamax vs Capesize?", use_container_width=True, key="chip_panamax"):
                     selected_chip = "Why did the system allocate 2x Panamax instead of a single Capesize for this cargo?"
             with chip_col2:
-                if st.button("🇷🇺 2. Sourcing from Russia?", use_container_width=True):
-                    selected_chip = "How does sourcing from Russian ports (Taman / Vostochny) compare to Australian origins?"
+                if st.button("🌊 2. Haldia River Constraints?", use_container_width=True, key="chip_haldia"):
+                    selected_chip = "What are the riverine navigation constraints and vessel restrictions at Haldia port?"
             with chip_col3:
-                if st.button("⏳ 3. Demurrage & Idle Cost?", use_container_width=True):
-                    selected_chip = "What is our expected demurrage liability at this discharge port and how can we mitigate it?"
+                if st.button("🇷🇺 3. Russian Coal Sourcing?", use_container_width=True, key="chip_russia"):
+                    selected_chip = "How does sourcing metallurgical coal from Russian ports (Taman / Vostochny) compare to Australian origins?"
+
+            # Quick Prompt Action Chips - Row 2
+            chip_col4, chip_col5, chip_col6 = st.columns(3)
             with chip_col4:
-                if st.button("📈 4. Spot vs Mid-Term COA?", use_container_width=True):
-                    selected_chip = "Why should SAIL lock in a medium-term COA contract right now instead of daily spot charters?"
+                if st.button("⏳ 4. Demurrage & Gangavaram?", use_container_width=True, key="chip_demurrage"):
+                    selected_chip = "What is our expected demurrage liability at this discharge port and how can we mitigate it via Gangavaram?"
+            with chip_col5:
+                if st.button("📊 5. XGBoost ML Architecture?", use_container_width=True, key="chip_xgboost"):
+                    selected_chip = "What machine learning architecture and feature inputs are used for freight rate forecasting?"
+            with chip_col6:
+                if st.button("⚙️ 6. PuLP MILP Mathematical Model?", use_container_width=True, key="chip_milp"):
+                    selected_chip = "How does the PuLP Mixed-Integer Linear Programming (MILP) model formulate the vessel allocation problem?"
 
             st.markdown("---")
 
@@ -1116,6 +1163,8 @@ def main():
                 avatar = "🧑‍💼" if msg["role"] == "user" else "🤖"
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.markdown(msg["content"])
+                    if "badge" in msg and msg["badge"] and msg["role"] == "assistant":
+                        st.caption(f"Engine: {msg['badge']}")
 
             # Construct dynamic grounding system context
             grounding_context = build_grounding_system_context(
@@ -1129,7 +1178,7 @@ def main():
             )
 
             # Chat Input Box
-            user_query = st.chat_input("Ask a logistics, draft, demurrage, or chartering question...")
+            user_query = st.chat_input("Ask a logistics, draft, demurrage, ML, or chartering question...")
             query_to_process = selected_chip or user_query
 
             if query_to_process:
@@ -1137,7 +1186,7 @@ def main():
                 with st.chat_message("user", avatar="🧑‍💼"):
                     st.markdown(query_to_process)
 
-                fallback_ans = generate_local_fallback_response(
+                fallback_ans = generate_grounded_local_response(
                     query=query_to_process,
                     inputs=inputs,
                     opt_result=opt_result,
@@ -1149,257 +1198,24 @@ def main():
 
                 with st.chat_message("assistant", avatar="🤖"):
                     with st.spinner("Analyzing operational constraints & generating strategic advice..."):
-                        ai_reply = query_gemini_copilot(
+                        ai_reply, engine_badge = query_copilot(
                             user_prompt=query_to_process,
                             api_key=inputs.get("gemini_api_key", ""),
                             grounding_context=grounding_context,
                             fallback_response=fallback_ans
                         )
                         st.markdown(ai_reply)
+                        st.caption(f"Engine: {engine_badge}")
 
-                st.session_state.copilot_messages.append({"role": "assistant", "content": ai_reply})
+                st.session_state.copilot_messages.append({
+                    "role": "assistant",
+                    "content": ai_reply,
+                    "badge": engine_badge
+                })
 
     except Exception as exc:
         st.error(f"❌ An error occurred while executing the decision support engine: {exc}")
         logger.error("Dashboard error: %s", exc, exc_info=True)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# HELPER FUNCTIONS FOR COPILOT GROUNDING & GENERATION
-# ═══════════════════════════════════════════════════════════════════════════════
-def build_grounding_system_context(
-    inputs: Dict[str, Any],
-    pred_result: Dict[str, Any],
-    dual_feasibility_result: Dict[str, Any],
-    opt_result: Dict[str, Any],
-    demurrage_result: Dict[str, Any],
-    timing_result: Dict[str, Any],
-    scenario_rows: List[Dict[str, Any]]
-) -> str:
-    """Construct dynamic, comprehensive grounding context for Gemini from active dashboard state."""
-    orig = dual_feasibility_result["origin"]
-    dest = dual_feasibility_result["destination"]
-    vessel_status = dual_feasibility_result["route_vessel_status"]
-    
-    vessel_feasibility_summary = []
-    for v, data in vessel_status.items():
-        spec = data["specs"]
-        if data["feasible"]:
-            vessel_feasibility_summary.append(f"- {v} (Capacity: {spec['capacity_mt']:,} MT, Draft: {spec['draft_m']}m, LOA: {spec['loa_m']}m): FULLY PERMITTED")
-        else:
-            reasons = "; ".join(data["reasons"])
-            vessel_feasibility_summary.append(f"- {v} (Capacity: {spec['capacity_mt']:,} MT, Draft: {spec['draft_m']}m): BLOCKED ({reasons})")
-            
-    vessel_feasibility_str = "\n".join(vessel_feasibility_summary)
-    
-    scenarios_str = "\n".join(
-        f"- {r['Scenario']}: Dest={r['Destination Port']}, Fleet={r['Fleet Allocation']}, Cost={r['Total Cost (USD)']}, Rate={r['Effective Rate ($/MT)']}"
-        for r in scenario_rows
-    )
-
-    system_prompt = f"""You are the SAIL Maritime Logistics AI Advisor for the Ministry of Steel, Government of India.
-You provide concise, authoritative, data-backed operational and strategic explanations for vessel chartering, dual-port feasibility, demurrage minimization, and bulk cargo procurement.
-
-══ ACTIVE DASHBOARD STATE & REAL-TIME DATA GROUNDING ══
-• Cargo Volume: {inputs['cargo_volume_mt']:,} MT of Metallurgical Coking Coal
-• Origin Loading Port: {inputs['origin_port']} (Max Draft: {orig['port_constraints']['max_draft_m']}m, Max LOA: {orig['port_constraints']['max_loa_m']}m, Distance: {pred_result['distance_nm']:,} NM)
-• Destination Discharge Port: {inputs['destination_port']} (Max Draft: {dest['port_constraints']['max_draft_m']}m, Max LOA: {dest['port_constraints']['max_loa_m']}m)
-• Contract Mode: {inputs['contract_type']}
-• Risk Profile: {inputs['risk_tolerance']}
-
-══ PREDICTIVE ENGINE OUTPUT (XGBoost Regressor R²=92.01%) ══
-• Predicted Freight Rate: ${pred_result['predicted_rate_usd']:.2f} / MT (Uncertainty Range: ± ${pred_result['uncertainty_delta']:.2f})
-• Market Indicators: BDI Index = {pred_result['bdi_index']:,.0f}, VLSFO Bunker Fuel = ${pred_result['vlsfo_price']:.2f}/MT
-• Monsoon Status: {'Active Southwest Monsoon (15% weather risk incorporated)' if pred_result['is_monsoon'] else 'Fair Weather Shipping Window'}
-
-══ PROACTIVE CONTRACT TIMING (SPOT VS COA) ══
-• Recommendation: {timing_result['recommendation']}
-• 30-Day Momentum: {timing_result['rate_change_pct']:+.1f}%
-• Financial Value: ${abs(timing_result['projected_savings_usd']):,.2f} projected savings
-
-══ DEMURRAGE & IDLE-TIME RISK ENGINE ══
-• Expected Port Stay: {demurrage_result['total_port_stay_days']} days (Waiting: {demurrage_result['avg_wait_days']}d, Discharge: {demurrage_result['discharge_days']}d)
-• Excess Laytime Days: {demurrage_result['excess_idle_days']} days
-• Total Demurrage Liability: ${demurrage_result['total_demurrage_exposure_usd']:,.2f} (+${demurrage_result['demurrage_cost_per_tonne']:.2f}/MT)
-• Gangavaram Diversion Benefit: ${demurrage_result['gangavaram_diversion_savings_usd']:,.2f}
-
-══ PRESCRIPTIVE FLEET OPTIMIZER OUTPUT (PuLP MILP Global Optimum) ══
-• Optimization Status: {opt_result['status'].upper()}
-• Recommended Fleet Allocation: {opt_result['fleet_summary']} ({opt_result['fleet']})
-• Total Capacity Provided: {opt_result['total_capacity_mt']:,} MT (Slack: {opt_result['slack_mt']:,} MT)
-• Total Estimated Charter Cost: ${opt_result['total_cost_usd']:,.2f}
-• Effective Unit Rate: ${opt_result['cost_per_tonne']:.2f} / MT
-
-══ ROUTE PHYSICAL COMPLIANCE (ORIGIN & DESTINATION) ══
-{vessel_feasibility_str}
-
-══ SCENARIO TRADEOFF MATRIX ══
-{scenarios_str}
-
-══ INSTRUCTIONS & GUARDRAILS ══
-1. Explain engineering constraints clearly (e.g. why Capesize is blocked at Haldia (8.5m draft) or Paradip (16.5m draft vs 17.5m vessel requirement)).
-2. Explain economic trade-offs (e.g. deadweight slack penalties vs volume discounts).
-3. Provide strategic advice on sourcing from Russia (Taman/Vostochny), Australia, US, or Mozambique.
-4. Keep responses crisp, executive-ready, and well-structured using markdown bullets.
-"""
-    return system_prompt
-
-
-def generate_local_fallback_response(
-    query: str,
-    inputs: Dict[str, Any],
-    opt_result: Dict[str, Any],
-    dual_feasibility_result: Dict[str, Any],
-    pred_result: Dict[str, Any],
-    demurrage_res: Dict[str, Any],
-    timing_res: Dict[str, Any]
-) -> str:
-    """Provide high-precision domain-grounded fallback responses if Gemini API key is offline."""
-    q_lower = query.lower()
-    dest = inputs["destination_port"]
-    orig = inputs["origin_port"]
-    fleet = opt_result["fleet_summary"]
-    cost = opt_result["total_cost_usd"]
-    rate = pred_result["predicted_rate_usd"]
-    dest_draft = dual_feasibility_result["destination"]["port_constraints"]["max_draft_m"]
-    
-    if q_lower.strip() in ["hey", "hello", "hi", "greetings", "good morning", "good afternoon", "help", "who are you"]:
-        return (
-            f"### 👋 Hello! How can I assist your logistics decision today?\n\n"
-            f"I am your **SAIL Maritime Logistics AI Advisor** for the Ministry of Steel.\n\n"
-            f"**Current Active Dashboard Overview:**\n"
-            f"• **Active Voyage**: {orig} ➔ {dest} ({pred_result['distance_nm']:,} NM)\n"
-            f"• **Recommended Fleet**: **{fleet}** at **${opt_result.get('cost_per_tonne', 0):.2f}/MT** (Total: **${cost:,.2f}**)\n"
-            f"• **Port Channel Draft**: {dest_draft}m limit ({', '.join(dual_feasibility_result['destination']['allowed_vessels'])} allowed)\n"
-            f"• **Demurrage Risk**: **${demurrage_res['total_demurrage_exposure_usd']:,.2f}** (+${demurrage_res['demurrage_cost_per_tonne']:.2f}/MT)\n\n"
-            f"Feel free to click any of the **Quick Demo Questions** above or ask about **port draft bottlenecks, Russian coal sourcing (Taman/Vostochny), demurrage avoidance, or Spot vs. COA timing!**"
-        )
-        
-    elif "panamax" in q_lower and "capesize" in q_lower or "why did the system allocate" in q_lower:
-        if dest in ["Paradip", "Visakhapatnam (Vizag)", "Haldia"]:
-            return (
-                f"### ⚓ Infrastructure & Navigational Analysis\n\n"
-                f"**Why 2x Panamax instead of a single Capesize?**\n\n"
-                f"1. **Physical Draft Barrier**: **{dest}** has a maximum permissible draft of **{dest_draft}m**. A fully laden Capesize vessel requires a draft of **17.5m** (LOA 290m). Berthing a Capesize would breach safety margins and cause immediate grounding risk.\n"
-                f"2. **Optimal Fleet Fit**: The optimizer selected **{fleet}** ({opt_result['total_capacity_mt']:,} MT capacity). Panamax vessels (draft **13.5m**) comfortably navigate within {dest}'s {dest_draft}m channel limit.\n"
-                f"3. **Zero Deadweight Slack**: 2x Panamax exactly fits the **{inputs['cargo_volume_mt']:,} MT** cargo with **0 MT slack penalty**, delivering an effective unit cost of **${opt_result['cost_per_tonne']:.2f}/ton** (Total: **${cost:,.2f}**)."
-            )
-        else:
-            return (
-                f"### ⚓ Economic Capacity & Slack Analysis\n\n"
-                f"At **{dest}** (max draft {dest_draft}m), Capesize is physically permitted, but chartering 1x Capesize (170,000 MT capacity) incurs a **20,000 MT unused deadweight penalty** ($2.89M total). In contrast, **2x Panamax (150,000 MT)** exactly matches the cargo demand with **zero slack**, saving approximately **$190,000**."
-            )
-            
-    elif "haldia" in q_lower:
-        return (
-            f"### 🌊 Riverine Logistics & Haldia Port Strategy\n\n"
-            f"**If discharge is switched to Haldia:**\n\n"
-            f"1. **Severe River Draft Restrictions**: Haldia is a riverine lock-gated dock with a maximum draft of only **8.5m** and LOA limit of **230m**.\n"
-            f"2. **Vessel Exclusion**: Capesize (17.5m), Panamax (13.5m), and Supramax (11.5m) are **100% blocked** from direct berthing.\n"
-            f"3. **Charter Strategy Shift**:\n"
-            f"   - **Option A (Direct River Transit)**: Charter **5x Handysize vessels (35,000 MT each = 175,000 MT)**. Due to lack of economies of scale, total cost increases to **$3.50M** ($23.33/ton).\n"
-            f"   - **Option B (Transshipment / Lighterage)**: Charter a Capesize mother vessel to **Sagar / Sandheads deep anchorage (15.0m draft)**, then lighter onto smaller daughter barges for final Haldia delivery."
-        )
-        
-    elif "russia" in q_lower or "taman" in q_lower or "vostochny" in q_lower:
-        return (
-            f"### 🇷🇺 Russian Metallurgical Coal Sourcing Strategy\n\n"
-            f"**Procurement from Russian Export Nodes:**\n\n"
-            f"1. **Taman Bulk Terminal (Black Sea / Mediterranean Route - 6,200 NM)**:\n"
-            f"   - **Draft & Berth**: 17.5m draft accommodates fully laden Capesize directly (up to 220,000 DWT).\n"
-            f"   - **Transit**: Transits Bosphorus $\\to$ Suez Canal $\\to$ Indian East Coast (~20-22 days steaming time).\n"
-            f"2. **Vostochny Port (Pacific Route - 5,100 NM)**:\n"
-            f"   - **Draft & Berth**: 16.5m draft accommodates Capesize and Panamax bulk carriers.\n"
-            f"   - **Transit**: Transits Sea of Japan $\\to$ Malacca Strait $\\to$ Bay of Bengal (~16-18 days steaming time).\n"
-            f"3. **Commercial Recommendation**: Russian PCI and hard coking coal typically offers a **12–18% FOB discount** vs Australian benchmarks, providing strong landed cost savings for SAIL/RINL blast furnaces."
-        )
-
-    elif "demurrage" in q_lower or "idle" in q_lower or "congestion" in q_lower:
-        return (
-            f"### ⏳ Demurrage Exposure & Port Idle-Time Assessment\n\n"
-            f"• **Destination Port**: {dest} (Turnaround Status: **{demurrage_res['port_status']}**)\n"
-            f"• **Expected Port Stay**: **{demurrage_res['total_port_stay_days']} days** (Wait: {demurrage_res['avg_wait_days']}d, Discharge: {demurrage_res['discharge_days']}d)\n"
-            f"• **Excess Idle Duration**: **{demurrage_res['excess_idle_days']} days** beyond 3.0-day free laytime allowance.\n"
-            f"• **Demurrage Financial Risk**: **${demurrage_res['total_demurrage_exposure_usd']:,.2f}** (+${demurrage_res['demurrage_cost_per_tonne']:.2f}/MT).\n"
-            f"• **Strategic Mitigation**: Diverting to **Gangavaram (0.8 days wait)** reduces demurrage by **${demurrage_res['gangavaram_diversion_savings_usd']:,.2f}**."
-        )
-        
-    elif "contract" in q_lower or "spot" in q_lower or "coa" in q_lower or "timing" in q_lower:
-        return (
-            f"### 📈 Commercial ROI & Contract Strategy Analysis\n\n"
-            f"• **Recommendation**: **{timing_res['recommendation']}** ({timing_res['badge']})\n"
-            f"• **Rationale**: {timing_res['rationale']}\n"
-            f"• **Projected Value**: **${abs(timing_res['projected_savings_usd']):,.2f}** financial benefit."
-        )
-        
-    else:
-        return (
-            f"### 🚢 SAIL Logistics Copilot Assessment\n\n"
-            f"• **Active Route**: {orig} ➔ {dest} ({pred_result['distance_nm']:,} NM)\n"
-            f"• **Optimal Fleet**: **{fleet}** at **${opt_result.get('cost_per_tonne', 0):.2f}/MT** (Total: **${cost:,.2f}**)\n"
-            f"• **Demurrage Risk**: **${demurrage_res['total_demurrage_exposure_usd']:,.2f}** (+${demurrage_res['demurrage_cost_per_tonne']:.2f}/MT)\n"
-            f"• **ML Freight Forecast**: **${rate:.2f}/MT** (30-Day Forward Trend: **{timing_res['rate_change_pct']:+.1f}%**)."
-        )
-
-
-def query_gemini_copilot(
-    user_prompt: str,
-    api_key: str,
-    grounding_context: str,
-    fallback_response: str
-) -> str:
-    """Query Gemini with live grounding and multi-model failover."""
-    if not api_key or not api_key.strip():
-        return f"{fallback_response}\n\n*(ℹ️ Note: Response generated via grounded local domain intelligence. Enter your personal Gemini API key in the sidebar for live multimodal LLM generation.)*"
-
-    if not GENAI_AVAILABLE:
-        return f"{fallback_response}\n\n*(ℹ️ google-generativeai package initializing)*"
-
-    try:
-        genai.configure(api_key=api_key.strip())
-        
-        model_names = [
-            "gemini-flash-lite-latest",
-            "gemini-3.5-flash-lite",
-            "gemini-3.1-flash-lite",
-            "gemini-flash-latest",
-            "gemma-4-26b-a4b-it",
-            "gemini-3.8-flash"
-        ]
-        model = None
-        
-        for m_name in model_names:
-            try:
-                model = genai.GenerativeModel(
-                    model_name=m_name,
-                    system_instruction=grounding_context
-                )
-                break
-            except Exception:
-                continue
-
-        if model is None:
-            model = genai.GenerativeModel("gemini-flash-lite-latest")
-
-        full_prompt = (
-            f"You are the SAIL Maritime Logistics AI Advisor for the Ministry of Steel.\n\n"
-            f"Grounding Operational Context:\n{grounding_context}\n\n"
-            f"User Question: {user_prompt}\n\n"
-            f"Please provide an authoritative, articulate, and well-structured professional response:"
-        )
-        response = model.generate_content(full_prompt)
-        
-        if response and hasattr(response, "text") and response.text:
-            return response.text
-        else:
-            return fallback_response
-
-    except Exception as exc:
-        err_msg = str(exc)
-        logger.warning("Gemini API call returned exception: %s. Using grounded domain response.", exc)
-        if "429" in err_msg or "ResourceExhausted" in err_msg or "quota" in err_msg.lower():
-            return f"{fallback_response}\n\n*(ℹ️ Note: Live Gemini API Free-Tier rate limit reached — Served via grounded local domain intelligence)*"
-        return f"{fallback_response}\n\n*(ℹ️ Note: Served via grounded local domain intelligence)*"
 
 
 if __name__ == "__main__":
